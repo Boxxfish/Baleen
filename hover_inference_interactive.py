@@ -3,6 +3,7 @@ import tqdm
 import ujson
 import random
 import argparse
+import csv
 
 from colbert.data import Queries
 from colbert.infra import Run, RunConfig
@@ -18,8 +19,6 @@ def main(args):
     print_message("#> Starting...")
 
     collectionX_path = os.path.join(args.datadir, 'wiki.abstracts.2017/collection.json')
-    queries_path = os.path.join(args.datadir, 'hover/dev/questions.tsv')
-    qas_path = os.path.join(args.datadir, 'hover/dev/qas.json')
 
     checkpointL1 = os.path.join(args.datadir, 'hover.checkpoints-v1.0/condenserL1-v1.0.dnn')
     checkpointL2 = os.path.join(args.datadir, 'hover.checkpoints-v1.0/condenserL2-v1.0.dnn')
@@ -32,15 +31,22 @@ def main(args):
         baleen = Baleen(collectionX_path, searcher, condenser)
         baleen.searcher.configure(nprobe=2, ncandidates=8192)
 
-    queries = Queries(path=queries_path)
-    outputs = {}
+    while True:
+        query = input("> ")
 
-    for qid, query in tqdm.tqdm(queries.items()):
         facts, pids_bag, _ = baleen.search(query, num_hops=4)
-        outputs[qid] = (list(facts), list(pids_bag))
-
-    with Run().open('output.json', 'w') as f:
-        f.write(ujson.dumps(outputs) + '\n')
+        print("Facts:")
+        for fact in facts:
+            pid = fact[0]
+            with open("../wiki.abstracts.2017/collection.tsv") as f:
+                tsv_file = csv.reader(f, delimiter="\t")
+                for row in tsv_file:
+                    if row[0] == str(pid):
+                        print(row[1])
+                        break
+        print("")
+        print("********")
+        print("")
 
 
 if __name__ == '__main__':
